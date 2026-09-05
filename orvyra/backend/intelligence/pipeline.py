@@ -13,9 +13,10 @@ Orchestrates:
 """
 
 from __future__ import annotations
+import datetime
 from storage.models import (
     IntelligencePacket, ProspectInput, ProductContext, CompanyContext,
-    PersonContext, Claim, EvidenceSource, SourceDocument, new_id
+    PersonContext, Claim, ClaimType, EvidenceSource, SourceDocument, new_id
 )
 from ingestion.crawler import crawl_company
 from intelligence.enrichment import resolve_identity
@@ -44,12 +45,28 @@ def build_company_profile(
     industry: str | None = None
     recent_signals: list[str] = []
 
+    # 1. First pass: look for real FACT claims describing industry/domain (excluding title tags)
+    for c in claims:
+        if c.type == ClaimType.FACT and not c.claim.startswith("Company identity title"):
+            claim_lower = c.claim.lower()
+            if any(kw in claim_lower for kw in ["industry", "financial infrastructure", "payments", "fintech", "saas", "software", "healthcare", "logistics", "e-commerce", "platform"]):
+                industry = c.claim
+                break
+
+    # 2. Second pass: fallback to any non-title claim with industry keywords if no fact claim matched
+    if not industry:
+        for c in claims:
+            if not c.claim.startswith("Company identity title"):
+                claim_lower = c.claim.lower()
+                if any(kw in claim_lower for kw in ["saas", "software", "fintech", "payments", "financial infrastructure", "healthcare", "logistics", "ai", "technology"]):
+                    industry = c.claim
+                    break
+
     for c in claims:
         claim_lower = c.claim.lower()
-        if not industry and any(kw in claim_lower for kw in ["saas", "software", "fintech", "healthcare", "logistics", "ai", "technology"]):
-            industry = c.claim
-        if any(kw in claim_lower for kw in ["hiring", "expansion", "growth", "funding", "careers", "signal"]):
-            recent_signals.append(c.claim)
+        if any(kw in claim_lower for kw in ["hiring", "expansion", "growth", "funding", "careers", "signal", "agentic"]):
+            if not c.claim.startswith("Company identity title"):
+                recent_signals.append(c.claim)
 
     successful_docs = [d for d in documents if d.status == "success"]
     if successful_docs:
@@ -135,12 +152,20 @@ async def build_intelligence_pipeline(
         )
     )
 
-    status = "ready" if opportunity.pursue else "low_relevance"
+    if identity.get("needs_review") or identity.get("status") == "needs_review":
+        status = "needs_review"
+        for conf in identity.get("conflicts", []):
+            warnings.append(f"Identity conflict: {conf}")
+    else:
+        status = "ready" if opportunity.pursue else "partial"
+    now = datetime.datetime.now(datetime.timezone.utc)
+    valid_until = now + datetime.timedelta(days=7)
 
     return IntelligencePacket(
         **({"prospect_id": prospect_id_override} if prospect_id_override else {}),
         schema_version="1.0.0",
         status=status,
+        valid_until=valid_until,
         warnings=warnings,
         sources=sources,
         identity=prospect,
@@ -151,4 +176,6 @@ async def build_intelligence_pipeline(
         opportunity=opportunity,
         conversation_strategy=strategy,
         previous_interactions=prior_interactions or [],
+        created_at=now,
     )
+

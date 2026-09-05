@@ -12,20 +12,76 @@ from __future__ import annotations
 from storage.models import ProspectInput, CompanyContext, PersonContext, Claim, ClaimType
 
 
+from urllib.parse import urlparse
+from storage.db import SessionLocal
+from storage.sql_models import IdentityModel
+
+
 def resolve_identity(prospect: ProspectInput) -> dict:
     """
     Stage A — identity resolution.
 
-    MVP: trusts the input as given (name + email/linkedin as the
-    disambiguating keys). Real version: cross-check name+company
-    against multiple sources before merging, to avoid conflating
-    two different people with the same name.
+    Queries IdentityModel across email, linkedin_url, domains, name+company.
+    Returns 'needs_review' status if conflicting signals are submitted.
     """
-    return {
-        "name": prospect.name,
-        "disambiguation_keys": [k for k in [prospect.email, prospect.linkedin_url] if k],
-        "resolved": bool(prospect.email or prospect.linkedin_url),
-    }
+    keys = []
+    if prospect.email:
+        keys.append(("email", prospect.email.lower().strip()))
+    if prospect.linkedin_url:
+        keys.append(("linkedin_url", prospect.linkedin_url.lower().strip()))
+    if prospect.company_url:
+        domain = urlparse(prospect.company_url).netloc or prospect.company_url
+        if domain.startswith("www."):
+            domain = domain[4:]
+        if domain:
+            keys.append(("domain", domain.lower().strip()))
+    if prospect.name and prospect.company:
+        keys.append(("name_company", f"{prospect.name.lower().strip()}|{prospect.company.lower().strip()}"))
+
+    key_vals = [k[1] for k in keys]
+
+    if not key_vals:
+        return {
+            "name": prospect.name,
+            "status": "unresolved",
+            "needs_review": False,
+            "resolved": False,
+            "disambiguation_keys": [],
+            "conflicts": [],
+        }
+
+    db = SessionLocal()
+    try:
+        recs = db.query(IdentityModel).filter(IdentityModel.key_value.in_(key_vals)).all()
+
+        prospect_ids = set()
+        conflicts = []
+
+        for r in recs:
+            prospect_ids.add(r.prospect_id)
+            if prospect.company and r.company_name:
+                c1 = prospect.company.lower().strip()
+                c2 = r.company_name.lower().strip()
+                if c1 != c2 and c1 not in c2 and c2 not in c1:
+                    conflicts.append(f"Company mismatch on key '{r.key_value}': '{prospect.company}' vs stored '{r.company_name}'")
+
+        if len(prospect_ids) > 1:
+            conflicts.append(f"Multiple prospects matched for input keys: {list(prospect_ids)}")
+
+        needs_review = len(conflicts) > 0
+        status = "needs_review" if needs_review else ("resolved" if recs else "new")
+
+        return {
+            "name": prospect.name,
+            "status": status,
+            "needs_review": needs_review,
+            "resolved": not needs_review and len(recs) > 0,
+            "prospect_id": list(prospect_ids)[0] if len(prospect_ids) == 1 else None,
+            "disambiguation_keys": key_vals,
+            "conflicts": conflicts,
+        }
+    finally:
+        db.close()
 
 
 def build_person_context(prospect: ProspectInput, role_hint: str | None = None) -> PersonContext:

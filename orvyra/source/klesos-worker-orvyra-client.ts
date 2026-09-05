@@ -197,3 +197,49 @@ export async function postCall(
     return null;
   }
 }
+
+export const JobStatusSchema = z.object({
+  job_id: z.string(),
+  prospect_id: z.string(),
+  status: z.enum(["pending", "enriching", "ready", "partial", "failed", "needs_review"]),
+  error: z.string().nullable(),
+});
+export type JobStatus = z.infer<typeof JobStatusSchema>;
+
+/** Pre-warm intelligence packets asynchronously for a batch of leads. */
+export async function enrichLeads(
+  leads: Array<{ prospect: ProspectInput; objective: string; roleHint?: string; productContext?: ProductContext }>
+): Promise<JobStatus[] | null> {
+  try {
+    const body = leads.map((l) => ({
+      prospect: l.prospect,
+      objective: l.objective,
+      product: "Klesos",
+      product_context: l.productContext,
+      role_hint: l.roleHint,
+    }));
+    return await orvyraPost("/v1/prospects/enrich", body, z.array(JobStatusSchema));
+  } catch (err) {
+    console.error("[orvyra] enrichLeads failed:", err);
+    return null;
+  }
+}
+
+/** Check status of a background enrichment job. */
+export async function getEnrichmentJobStatus(jobId: string): Promise<JobStatus | null> {
+  try {
+    const { statusCode, body: resBody } = await request(`${ORVYRA_API_URL}/v1/enrichment-jobs/${jobId}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${ORVYRA_API_KEY}` },
+    });
+    const json = await resBody.json();
+    if (statusCode >= 400) {
+      throw new Error(`ORVYRA GET /v1/enrichment-jobs/${jobId} returned ${statusCode}`);
+    }
+    return JobStatusSchema.parse(json);
+  } catch (err) {
+    console.error("[orvyra] getEnrichmentJobStatus failed:", err);
+    return null;
+  }
+}
+

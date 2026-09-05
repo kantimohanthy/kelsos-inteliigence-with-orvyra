@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from api.routes import router
+from api.routes import router, root_router
 
 app = FastAPI(
     title="ORVYRA",
@@ -8,6 +8,8 @@ app = FastAPI(
     version="0.1.0",
 )
 app.include_router(router)
+app.include_router(root_router)
+
 
 
 @app.get("/health")

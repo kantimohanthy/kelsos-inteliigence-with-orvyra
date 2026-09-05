@@ -99,7 +99,9 @@ def analyze_call(payload: PostCallInput) -> CallAnalysis:
             system=(
                 "You analyze a sales call transcript. Output JSON with keys: "
                 "outcome (one of: interested_follow_up, not_interested, needs_more_info, "
-                "booked_meeting), intent_score (0-1), signals (list of short strings), "
+                "booked_meeting). If the prospect asks for pricing, demo, or details, or says 'sounds good', "
+                "classify outcome as 'interested_follow_up'. "
+                "intent_score (0-1), signals (list of short strings), "
                 "objections (list), next_action_channel (email/call/none), "
                 "next_action_description, delay_hours (number), crm_stage, crm_probability (0-1)."
             ),

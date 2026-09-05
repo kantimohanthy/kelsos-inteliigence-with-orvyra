@@ -1,22 +1,20 @@
-"""
-LLM provider abstraction.
-
-One function, `complete_json`, used everywhere reasoning needs a
-model call. If ANTHROPIC_API_KEY is set, it calls Claude and expects
-strict JSON back. If not set, callers fall back to their own
-heuristic logic — the pipeline must never crash for lack of a key.
-"""
-
 from __future__ import annotations
 import os
 import json
+from pathlib import Path
+from dotenv import load_dotenv
+
+backend_dir = Path(__file__).resolve().parent.parent
+load_dotenv(backend_dir / ".env")
+load_dotenv(backend_dir.parent / ".env")
+load_dotenv()
 
 
 def has_llm() -> bool:
     return bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 
-def complete_json(system: str, user: str, model: str = "claude-sonnet-4-6") -> dict | None:
+def complete_json(system: str, user: str, model: str = "claude-sonnet-5") -> dict | None:
     """Returns parsed JSON dict, or None if no key configured / call failed.
     Callers MUST have a heuristic fallback for the None case."""
     if not has_llm():
@@ -28,12 +26,17 @@ def complete_json(system: str, user: str, model: str = "claude-sonnet-4-6") -> d
         client = anthropic.Anthropic()
         resp = client.messages.create(
             model=model,
-            max_tokens=1024,
+            max_tokens=8192,
             system=system + "\nRespond with ONLY valid JSON. No markdown fences, no preamble.",
             messages=[{"role": "user", "content": user}],
         )
-        text = "".join(block.text for block in resp.content if block.type == "text")
-        text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        text = "".join(getattr(block, "text", "") for block in resp.content if getattr(block, "type", None) == "text").strip()
+        if "```" in text:
+            for part in text.split("```"):
+                part_clean = part.removeprefix("json").strip()
+                if part_clean.startswith("{") or part_clean.startswith("["):
+                    text = part_clean
+                    break
         return json.loads(text)
     except Exception:  # noqa: BLE001 — reasoning must degrade gracefully, never 500
         return None
