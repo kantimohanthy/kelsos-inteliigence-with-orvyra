@@ -1,0 +1,27 @@
+language: en-US
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_instructions:
+    - path: "orvyra/intelligence/**"
+      instructions: >
+        This is the reasoning layer. Flag anything that could let an
+        inference be presented as a fact, or that removes the
+        fact/inference/confidence tagging on a Claim.
+    - path: "orvyra/storage/**"
+      instructions: >
+        Flag any change that would let a secret (API key, DB URL) be
+        hard-coded or logged.
+    - path: "source/**"
+      instructions: >
+        These are planning docs (PRD, design doc, tech stack), not code —
+        skip code-quality review, just flag internal inconsistencies.
+
+chat:
+  auto_reply: true

@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  /* Color — 6 named values, deliberate, not the framework default */
+  --void: #05070a;        /* page background — deep space navy, not pure black */
+  --surface: #0d1117;     /* card surface, one step up from void */
+  --surface-raised: #131a24; /* hover / active surface */
+  --hairline: #1c2430;    /* borders, dividers */
+  --text: #e8edf2;        /* primary text — off-white, not #fff */
+  --text-muted: #7c8798;  /* secondary text, labels */
+  --cyan: #43e8d8;        /* accent — pursue state, active nav. Used sparingly. */
+  --amber: #f2b84b;       /* objections, no-pursue state. Not alarm-red — this is a recommendation, not an error. */
+
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+@theme inline {
+  --color-void: var(--void);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-hairline: var(--hairline);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-cyan: var(--cyan);
+  --color-amber: var(--amber);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+/* visible keyboard focus — quality floor, not optional */
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

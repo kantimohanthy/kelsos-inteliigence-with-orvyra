@@ -1,0 +1,486 @@
+{
+  "$defs": {
+    "Claim": {
+      "description": "A single piece of intelligence, always tagged fact vs inference.",
+      "properties": {
+        "claim": {
+          "title": "Claim",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ClaimType"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceSource"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "claim",
+        "type",
+        "confidence"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "ClaimType": {
+      "enum": [
+        "fact",
+        "inference"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "CompanyContext": {
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "industry": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Industry"
+        },
+        "business_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Business Model"
+        },
+        "estimated_size": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Size"
+        },
+        "recent_signals": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Recent Signals",
+          "type": "array"
+        }
+      },
+      "title": "CompanyContext",
+      "type": "object"
+    },
+    "ConversationStrategy": {
+      "properties": {
+        "objective": {
+          "title": "Objective",
+          "type": "string"
+        },
+        "opening_angle": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opening Angle"
+        },
+        "discovery_questions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Discovery Questions",
+          "type": "array"
+        },
+        "proof_points": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Proof Points",
+          "type": "array"
+        },
+        "avoid": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Avoid",
+          "type": "array"
+        }
+      },
+      "required": [
+        "objective"
+      ],
+      "title": "ConversationStrategy",
+      "type": "object"
+    },
+    "EvidenceSource": {
+      "description": "Structured evidence provenance object replacing loose strings.",
+      "properties": {
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "source_type": {
+          "default": "website_scrape",
+          "title": "Source Type",
+          "type": "string"
+        },
+        "retrieval_time": {
+          "format": "date-time",
+          "title": "Retrieval Time",
+          "type": "string"
+        },
+        "excerpt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Excerpt"
+        },
+        "confidence": {
+          "default": 1.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "title": "EvidenceSource",
+      "type": "object"
+    },
+    "Opportunity": {
+      "properties": {
+        "primary_problem": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Primary Problem"
+        },
+        "confidence": {
+          "default": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "value_hypothesis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value Hypothesis"
+        },
+        "likely_objections": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Likely Objections",
+          "type": "array"
+        },
+        "recommended_angle": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recommended Angle"
+        },
+        "pursue": {
+          "default": true,
+          "title": "Pursue",
+          "type": "boolean"
+        },
+        "reason_if_not_pursue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason If Not Pursue"
+        }
+      },
+      "title": "Opportunity",
+      "type": "object"
+    },
+    "PersonContext": {
+      "properties": {
+        "role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "seniority": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seniority"
+        },
+        "responsibilities": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Responsibilities",
+          "type": "array"
+        },
+        "probable_priorities": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "title": "Probable Priorities",
+          "type": "array"
+        }
+      },
+      "title": "PersonContext",
+      "type": "object"
+    },
+    "ProspectInput": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "company": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Company"
+        },
+        "email": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Email"
+        },
+        "linkedin_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Linkedin Url"
+        },
+        "company_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Company Url"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ProspectInput",
+      "type": "object"
+    }
+  },
+  "description": "The object every downstream application (Klesos included) consumes.",
+  "properties": {
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "packet_id": {
+      "title": "Packet Id",
+      "type": "string"
+    },
+    "trace_id": {
+      "title": "Trace Id",
+      "type": "string"
+    },
+    "prospect_id": {
+      "title": "Prospect Id",
+      "type": "string"
+    },
+    "status": {
+      "default": "generated",
+      "title": "Status",
+      "type": "string"
+    },
+    "valid_until": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Valid Until"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/EvidenceSource"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
+    "identity": {
+      "$ref": "#/$defs/ProspectInput"
+    },
+    "company_context": {
+      "$ref": "#/$defs/CompanyContext"
+    },
+    "person_context": {
+      "$ref": "#/$defs/PersonContext"
+    },
+    "facts": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "title": "Facts",
+      "type": "array"
+    },
+    "signals": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Signals",
+      "type": "array"
+    },
+    "opportunity": {
+      "$ref": "#/$defs/Opportunity"
+    },
+    "conversation_strategy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ConversationStrategy"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "previous_interactions": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Previous Interactions",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "identity"
+  ],
+  "title": "IntelligencePacket",
+  "type": "object"
+}

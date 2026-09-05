@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+node_modules/
+.next/
+*.log
+.DS_Store
+orvyra-mvp.zip
