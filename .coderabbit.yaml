@@ -1,0 +1,35 @@
+language: en-US
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_instructions:
+    - path: "orvyra/backend/intelligence/**"
+      instructions: >
+        This is the reasoning layer. Flag anything that could let an
+        inference be presented as a fact, or that removes the
+        fact/inference/confidence tagging on a Claim. Also flag any
+        column/field assumption that hasn't been verified against
+        real Postgres, not just SQLite — this codebase has a history
+        of SQLite-passes-but-Postgres-fails bugs (VARCHAR truncation,
+        NOT NULL violations).
+    - path: "orvyra/backend/storage/**"
+      instructions: >
+        Flag any change that would let a secret (API key, DB URL) be
+        hard-coded or logged. Flag any SQLAlchemy column definition
+        with a length constraint (String(N)) on a field that could
+        hold LLM-generated or scraped text — prefer Text unless the
+        length is genuinely bounded.
+    - path: "orvyra/source/**"
+      instructions: >
+        This is the Klesos-integration client, consumed by a separate
+        repo. Flag any change to its exported function signatures —
+        those need to stay backward compatible or Kyle's worker breaks.
+
+chat:
+  auto_reply: true
