@@ -27,11 +27,12 @@ class IntelligenceMemory:
         db = SessionLocal()
         try:
             # 1. Upsert Prospect record
+            prospect_name = packet.identity.get_effective_name() if hasattr(packet.identity, "get_effective_name") else (packet.identity.name or packet.identity.company or "Unknown Prospect")
             prospect = db.query(ProspectModel).filter_by(prospect_id=packet.prospect_id).first()
             if not prospect:
                 prospect = ProspectModel(
                     prospect_id=packet.prospect_id,
-                    name=packet.identity.name,
+                    name=prospect_name,
                     email=packet.identity.email,
                     linkedin_url=packet.identity.linkedin_url,
                     company_url=packet.identity.company_url,
@@ -39,22 +40,23 @@ class IntelligenceMemory:
                 )
                 db.add(prospect)
             else:
-                prospect.name = packet.identity.name
+                prospect.name = prospect_name
                 prospect.email = packet.identity.email or prospect.email
                 prospect.linkedin_url = packet.identity.linkedin_url or prospect.linkedin_url
                 prospect.company_url = packet.identity.company_url or prospect.company_url
 
             # 2. Upsert Company record if company context exists
             if packet.company_context and packet.company_context.name:
-                company = db.query(CompanyModel).filter_by(name=packet.company_context.name).first()
+                comp_name = packet.company_context.name[:250]
+                company = db.query(CompanyModel).filter_by(name=comp_name).first()
                 if not company:
                     company = CompanyModel(
                         company_id=new_id("comp"),
-                        name=packet.company_context.name,
-                        company_url=packet.identity.company_url,
+                        name=comp_name,
+                        company_url=packet.identity.company_url[:500] if packet.identity.company_url else None,
                         industry=packet.company_context.industry,
-                        business_model=packet.company_context.business_model,
-                        estimated_size=packet.company_context.estimated_size,
+                        business_model=packet.company_context.business_model[:100] if packet.company_context.business_model else None,
+                        estimated_size=packet.company_context.estimated_size[:100] if packet.company_context.estimated_size else None,
                     )
                     db.add(company)
 

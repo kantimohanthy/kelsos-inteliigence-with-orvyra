@@ -178,6 +178,40 @@ class TestV1IntelligencePipeline(unittest.TestCase):
         self.assertIn("sources", packet)
         self.assertGreater(len(packet["sources"]), 0)
 
+    def test_missing_name_pre_call_live_payload(self) -> None:
+        """Verify pre-call request without 'name' (only company and company_url) succeeds without 500 error."""
+        req = {
+            "prospect": {
+                "company": "Anthropic",
+                "company_url": "https://www.anthropic.com"
+            },
+            "objective": "test"
+        }
+        res = self.client.post("/v1/intelligence/pre-call", json=req, headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        packet = res.json()
+        self.assertEqual(packet["identity"]["company"], "Anthropic")
+        self.assertEqual(packet["identity"]["name"], "Anthropic")
+
+
+    def test_exact_original_failing_curl_payload(self) -> None:
+        """Verify pre-call request with exact payload from user's curl command succeeds."""
+        req = {
+            "prospect": {
+                "name": "Test",
+                "company": "Anthropic",
+                "company_url": "https://www.anthropic.com"
+            },
+            "objective": "test"
+        }
+        res = self.client.post("/v1/intelligence/pre-call", json=req, headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        packet = res.json()
+        self.assertEqual(packet["identity"]["name"], "Test")
+        self.assertEqual(packet["identity"]["company"], "Anthropic")
+
 
 if __name__ == "__main__":
     unittest.main()
+
+

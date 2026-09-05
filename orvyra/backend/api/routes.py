@@ -62,13 +62,21 @@ async def _run_enrichment_job(job_id: str, req: PreCallRequest, prospect_id_over
 async def pre_call(req: PreCallRequest) -> IntelligencePacket:
     """Klesos -> Orvyra, before a call. Returns the full IntelligencePacket:
     company/person context, opportunity hypothesis, and conversation strategy."""
-    return await run_pre_call(
-        prospect=req.prospect,
-        objective=req.objective,
-        product=req.product,
-        product_context=req.product_context,
-        role_hint=req.role_hint,
-    )
+    try:
+        return await run_pre_call(
+            prospect=req.prospect,
+            objective=req.objective,
+            product=req.product,
+            product_context=req.product_context,
+            role_hint=req.role_hint,
+        )
+    except Exception as e:
+        logger.error(f"Error generating pre-call packet: {e}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate intelligence packet: {str(e)}"
+        )
+
 
 
 @root_router.post("/prospects/enrich", response_model=list[JobStatusResponse])

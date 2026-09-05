@@ -95,6 +95,9 @@ async def build_intelligence_pipeline(
     prior_interactions: list[dict] | None = None,
     prospect_id_override: str | None = None,
 ) -> IntelligencePacket:
+    if not prospect.name or not prospect.name.strip():
+        prospect.name = prospect.get_effective_name()
+
     # 1. Identity Resolution
     identity = resolve_identity(prospect)
 

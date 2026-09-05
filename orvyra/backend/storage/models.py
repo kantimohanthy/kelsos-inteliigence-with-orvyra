@@ -63,11 +63,21 @@ class Claim(BaseModel):
 
 
 class ProspectInput(BaseModel):
-    name: str
+    name: Optional[str] = None
     company: Optional[str] = None
     email: Optional[str] = None
     linkedin_url: Optional[str] = None
     company_url: Optional[str] = None
+
+    def get_effective_name(self) -> str:
+        if self.name and self.name.strip():
+            return self.name.strip()
+        if self.company and self.company.strip():
+            return self.company.strip()
+        if self.email and self.email.strip():
+            return self.email.split("@")[0].strip()
+        return "Unknown Prospect"
+
 
 
 class CompanyContext(BaseModel):

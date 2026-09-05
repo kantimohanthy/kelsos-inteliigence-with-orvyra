@@ -10,6 +10,11 @@ load_dotenv(backend_dir.parent / ".env")
 load_dotenv()
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def has_llm() -> bool:
     return bool(os.environ.get("ANTHROPIC_API_KEY"))
 
@@ -38,5 +43,7 @@ def complete_json(system: str, user: str, model: str = "claude-sonnet-5") -> dic
                     text = part_clean
                     break
         return json.loads(text)
-    except Exception:  # noqa: BLE001 — reasoning must degrade gracefully, never 500
+    except Exception as exc:  # noqa: BLE001 — reasoning must degrade gracefully, never 500
+        logger.warning(f"LLM call to model '{model}' failed ({type(exc).__name__}: {exc}); falling back to heuristics")
         return None
+

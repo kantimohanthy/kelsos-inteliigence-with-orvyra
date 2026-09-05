@@ -42,7 +42,7 @@ class CompanyModel(Base):
     company_id = Column(String(64), primary_key=True)
     name = Column(String(255), nullable=False)
     company_url = Column(String(512), nullable=True, index=True)
-    industry = Column(String(255), nullable=True)
+    industry = Column(Text, nullable=True)
     business_model = Column(String(100), nullable=True)
     estimated_size = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.datetime.now(datetime.timezone.utc))
