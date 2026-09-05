@@ -3,6 +3,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base, scoped_session
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./orvyra_dev.db")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # SQLite fallback settings
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
