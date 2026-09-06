@@ -24,6 +24,7 @@ from fastapi.testclient import TestClient
 from main import app
 from storage.memory import memory
 from storage.jobs import jobs
+from storage.models import SourceDocument
 
 
 class TestAsyncPreWarming(unittest.TestCase):
@@ -119,20 +120,57 @@ class TestAsyncPreWarming(unittest.TestCase):
             mock_pipeline.assert_not_called()
 
     def test_05_partial_batch_failure_isolation(self) -> None:
-        """Scenario 5: Batch of 3 leads with 1 bad/blocked URL isolates failure without a 500 server error."""
+        """Scenario 5: Heterogeneous batch of 3 leads with 1 SSRF-blocked URL isolates failure without a 500 server error; Lead A & C reach 'ready', Lead B reaches 'needs_review'."""
         batch_leads = [
-            {"prospect": {"name": "Batch Lead A", "email": "batch_a@example.com"}, "objective": "Batch A"},
-            {"prospect": {"name": "Batch Lead B", "company_url": "http://127.0.0.1"}, "objective": "Batch B"}, # SSRF blocked URL
-            {"prospect": {"name": "Batch Lead C", "email": "batch_c@example.com"}, "objective": "Batch C"}
+            {"prospect": {"name": "Batch Lead A", "company": "Acme SaaS", "company_url": "https://acme.example"}, "objective": "Batch A"}, # Healthy lead -> ready
+            {"prospect": {"name": "Batch Lead B", "company_url": "http://127.0.0.1"}, "objective": "Batch B"}, # SSRF blocked URL -> critic veto -> needs_review
+            {"prospect": {"name": "Batch Lead C", "company": "Tech Corp", "company_url": "https://techcorp.example"}, "objective": "Batch C"} # Healthy lead -> ready
         ]
 
-        res = self.client.post("/v1/prospects/enrich", json=batch_leads, headers=self.headers)
-        self.assertEqual(res.status_code, 200)
-        batch_res = res.json()
-        self.assertEqual(len(batch_res), 3)
-        self.assertIn(batch_res[0]["status"], ["pending", "ready", "partial"])
-        self.assertIn(batch_res[1]["status"], ["pending", "ready", "partial", "failed"])
-        self.assertIn(batch_res[2]["status"], ["pending", "ready", "partial"])
+        async def fake_crawl_company(url: str | None, max_pages: int = 10):
+            if not url or "127.0.0.1" in url:
+                return [SourceDocument(url=url or "", title="SSRF Blocked", content="", status="blocked", error="Local IP blocked")]
+            return [
+                SourceDocument(
+                    doc_id=f"doc_{url}",
+                    url=url,
+                    title="Company Overview",
+                    content=f"{url} is a leading SaaS provider with active hiring in engineering and expanding revenue teams.",
+                    status="success"
+                )
+            ]
+
+        with patch("intelligence.pipeline.crawl_company", side_effect=fake_crawl_company):
+            res = self.client.post("/v1/prospects/enrich", json=batch_leads, headers=self.headers)
+            self.assertEqual(res.status_code, 200)
+            batch_res = res.json()
+            self.assertEqual(len(batch_res), 3)
+
+            # 1. Initial submission status should be 'pending' for all jobs
+            for job in batch_res:
+                self.assertEqual(job["status"], "pending")
+
+            # 2. Poll jobs until completion and verify isolation
+            final_statuses = {}
+            for job in batch_res:
+                job_id = job["job_id"]
+                for _ in range(50):
+                    jres = self.client.get(f"/v1/enrichment-jobs/{job_id}", headers=self.headers)
+                    if jres.status_code == 200 and jres.json()["status"] not in ("pending", "enriching"):
+                        final_statuses[job_id] = jres.json()["status"]
+                        break
+                    time.sleep(0.05)
+
+            job_a_id = batch_res[0]["job_id"]
+            job_b_id = batch_res[1]["job_id"]
+            job_c_id = batch_res[2]["job_id"]
+
+            # Healthy leads with valid content reach 'ready'
+            self.assertEqual(final_statuses.get(job_a_id), "ready")
+            self.assertEqual(final_statuses.get(job_c_id), "ready")
+
+            # Lead B: SSRF blocked URL -> zero facts -> critic veto (pursue=False) -> terminal status = 'needs_review'
+            self.assertEqual(final_statuses.get(job_b_id), "needs_review")
 
     def test_06_direct_pre_call_fallback_regression(self) -> None:
         """Scenario 6: Calling pre-call directly (no pre-warming) works synchronously as a regression test."""

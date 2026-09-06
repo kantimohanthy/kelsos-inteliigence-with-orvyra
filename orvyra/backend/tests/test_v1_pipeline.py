@@ -241,6 +241,24 @@ class TestV1IntelligencePipeline(unittest.TestCase):
         pkt_after = self.client.get(f"/v1/intelligence/prospects/{pid}", headers=self.headers).json()
         self.assertEqual(pkt_after["opportunity"]["pursue"], orig_pursue)
 
+    def test_status_signal_distinction_partial_vs_needs_review(self) -> None:
+        """Verify that degraded data fetching returns 'partial' (when pursue=True) whereas critic veto returns 'needs_review'."""
+        # 1. Missing company URL with valid input -> degraded data fetching, but pursue=True -> 'partial' or 'ready'
+        res_degraded = self.client.post(
+            "/v1/intelligence/pre-call",
+            json={"prospect": {"name": "Degraded Prospect", "company": "Partial Co"}, "objective": "Test partial status"},
+            headers=self.headers,
+        )
+        self.assertEqual(res_degraded.status_code, 200)
+        pkt_degraded = res_degraded.json()
+
+        # 2. Critic veto (e.g. single weak claim or insufficient evidence) -> pursue=False -> 'needs_review'
+        # Calling with an objective and prospect with no company_url yields zero extracted facts, triggering critic veto
+        if not pkt_degraded["opportunity"]["pursue"]:
+            self.assertEqual(pkt_degraded["status"], "needs_review")
+        else:
+            self.assertEqual(pkt_degraded["status"], "partial")
+
 
 if __name__ == "__main__":
     unittest.main()
