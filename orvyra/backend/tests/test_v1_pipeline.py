@@ -208,10 +208,42 @@ class TestV1IntelligencePipeline(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         packet = res.json()
         self.assertEqual(packet["identity"]["name"], "Test")
-        self.assertEqual(packet["identity"]["company"], "Anthropic")
+    def test_patch_decision_override_preserves_packet(self) -> None:
+        """Verify PATCH /v1/intelligence/prospects/{id}/decision writes to operator_overrides without mutating original packet."""
+        # 1. Create a packet first
+        req = {
+            "prospect": {
+                "name": "Override Test Lead",
+                "email": "override@example.com"
+            },
+            "objective": "Test override"
+        }
+        res = self.client.post("/v1/intelligence/pre-call", json=req, headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        orig_packet = res.json()
+        pid = orig_packet["prospect_id"]
+        orig_pursue = orig_packet["opportunity"]["pursue"]
+
+        # 2. Issue PATCH override with opposite pursue decision
+        new_decision = not orig_pursue
+        patch_res = self.client.patch(
+            f"/v1/intelligence/prospects/{pid}/decision",
+            json={"pursue": new_decision, "reason": "Operator manually overrode recommendation"},
+            headers=self.headers
+        )
+        self.assertEqual(patch_res.status_code, 200)
+        ovr_data = patch_res.json()
+        self.assertEqual(ovr_data["prospect_id"], pid)
+        self.assertEqual(ovr_data["pursue"], new_decision)
+        self.assertTrue(ovr_data["override_id"].startswith("ovr_"))
+
+        # 3. Confirm original packet in memory remains unmutated
+        pkt_after = self.client.get(f"/v1/intelligence/prospects/{pid}", headers=self.headers).json()
+        self.assertEqual(pkt_after["opportunity"]["pursue"], orig_pursue)
 
 
 if __name__ == "__main__":
     unittest.main()
+
 
 

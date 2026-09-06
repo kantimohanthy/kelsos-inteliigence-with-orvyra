@@ -93,6 +93,16 @@ export interface CallAnalysis {
   crm_probability: number;
 }
 
+export interface DecisionOverride {
+  override_id: string;
+  prospect_id: string;
+  packet_id: string | null;
+  pursue: boolean;
+  reason: string;
+  operator_id: string;
+  created_at: string | null;
+}
+
 async function orvyraGet<T>(path: string): Promise<T> {
   const res = await fetch(`${ORVYRA_API_URL}${path}`, {
     headers: { Authorization: `Bearer ${ORVYRA_API_KEY}` },
@@ -109,4 +119,20 @@ export const orvyra = {
   getProspect: (id: string) => orvyraGet<IntelligencePacket>(`/v1/intelligence/prospects/${id}`),
   getProspectHistory: (id: string) => orvyraGet<CallAnalysis[]>(`/v1/intelligence/prospects/${id}/history`),
   listCalls: () => orvyraGet<CallAnalysis[]>("/v1/intelligence/calls"),
+  getOverride: (id: string) => orvyraGet<DecisionOverride | null>(`/v1/intelligence/prospects/${id}/override`),
+  overrideDecision: async (id: string, pursue: boolean, reason: string): Promise<DecisionOverride> => {
+    const res = await fetch(`${ORVYRA_API_URL}/v1/intelligence/prospects/${id}/decision`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${ORVYRA_API_KEY}`,
+      },
+      body: JSON.stringify({ pursue, reason }),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      throw new Error(`ORVYRA PATCH /v1/intelligence/prospects/${id}/decision returned ${res.status}`);
+    }
+    return res.json();
+  },
 };

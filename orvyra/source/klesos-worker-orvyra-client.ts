@@ -243,3 +243,41 @@ export async function getEnrichmentJobStatus(jobId: string): Promise<JobStatus |
   }
 }
 
+export const DecisionOverrideSchema = z.object({
+  override_id: z.string(),
+  prospect_id: z.string(),
+  packet_id: z.string().nullable(),
+  pursue: z.boolean(),
+  reason: z.string(),
+  operator_id: z.string(),
+  created_at: z.string().nullable(),
+});
+export type DecisionOverride = z.infer<typeof DecisionOverrideSchema>;
+
+/** Override an automated pursue decision for a prospect. Fail-open pattern. */
+export async function overrideDecision(
+  prospectId: string,
+  pursue: boolean,
+  reason: string
+): Promise<DecisionOverride | null> {
+  try {
+    const { statusCode, body: resBody } = await request(`${ORVYRA_API_URL}/v1/intelligence/prospects/${prospectId}/decision`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${ORVYRA_API_KEY}`,
+      },
+      body: JSON.stringify({ pursue, reason }),
+    });
+    const json = await resBody.json();
+    if (statusCode >= 400) {
+      throw new Error(`ORVYRA PATCH /v1/intelligence/prospects/${prospectId}/decision returned ${statusCode}`);
+    }
+    return DecisionOverrideSchema.parse(json);
+  } catch (err) {
+    console.error("[orvyra] overrideDecision failed:", err);
+    return null;
+  }
+}
+
+

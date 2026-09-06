@@ -171,6 +171,21 @@ def list_prospects() -> list[IntelligencePacket]:
     return memory.list_packets()
 
 
+class DecisionOverrideRequest(BaseModel):
+    pursue: bool
+    reason: str
+
+
+class DecisionOverrideResponse(BaseModel):
+    override_id: str
+    prospect_id: str
+    packet_id: str | None = None
+    pursue: bool
+    reason: str
+    operator_id: str
+    created_at: str | None = None
+
+
 @router.get("/prospects/{prospect_id}", response_model=IntelligencePacket)
 def get_prospect(prospect_id: str) -> IntelligencePacket:
     """Operator Dashboard -> Orvyra. Get a single prospect intelligence packet by prospect_id."""
@@ -178,6 +193,30 @@ def get_prospect(prospect_id: str) -> IntelligencePacket:
     if not packet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prospect packet '{prospect_id}' not found")
     return packet
+
+
+@root_router.patch("/prospects/{prospect_id}/decision", response_model=DecisionOverrideResponse)
+@router.patch("/prospects/{prospect_id}/decision", response_model=DecisionOverrideResponse)
+def override_decision(prospect_id: str, req: DecisionOverrideRequest) -> DecisionOverrideResponse:
+    """Operator Dashboard / Klesos -> Orvyra. Override automated pursue decision,
+    persisting record in operator_overrides without mutating original packet recommendation."""
+    try:
+        data = memory.save_override(prospect_id=prospect_id, pursue=req.pursue, reason=req.reason)
+        return DecisionOverrideResponse(**data)
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Error saving decision override for '{prospect_id}': {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@root_router.get("/prospects/{prospect_id}/override", response_model=DecisionOverrideResponse | None)
+@router.get("/prospects/{prospect_id}/override", response_model=DecisionOverrideResponse | None)
+def get_prospect_override(prospect_id: str) -> DecisionOverrideResponse | None:
+    data = memory.get_override(prospect_id)
+    if not data:
+        return None
+    return DecisionOverrideResponse(**data)
 
 
 @router.get("/prospects/{prospect_id}/history", response_model=list[CallAnalysis])

@@ -13,7 +13,7 @@ from storage.sql_models import (
     ProspectModel, IntelligencePacketModel, IdentityModel,
     CallAnalysisModel, ConversationModel, CallEventModel,
     AuditLogModel, ClaimModel, SourceDocumentModel, ClaimEvidenceModel,
-    CompanyModel
+    CompanyModel, OperatorOverrideModel
 )
 from storage.models import IntelligencePacket, CallAnalysis, new_id
 
@@ -292,6 +292,99 @@ class IntelligenceMemory:
                 .all()
             )
             return [CallAnalysis.model_validate(json.loads(r.analysis_json)) for r in recs]
+        finally:
+            db.close()
+
+    def save_override(self, prospect_id: str, pursue: bool, reason: str, operator_id: str | None = None) -> dict:
+        db = SessionLocal()
+        try:
+            prospect = db.query(ProspectModel).filter_by(prospect_id=prospect_id).first()
+            if not prospect:
+                pkt = (
+                    db.query(IntelligencePacketModel)
+                    .filter_by(prospect_id=prospect_id)
+                    .order_by(desc(IntelligencePacketModel.created_at))
+                    .first()
+                )
+                if not pkt:
+                    raise ValueError(f"Prospect '{prospect_id}' not found")
+                pkt_data = json.loads(pkt.packet_json)
+                ident = pkt_data.get("identity", {})
+                prospect = ProspectModel(
+                    prospect_id=prospect_id,
+                    name=ident.get("name") or ident.get("company") or "Unknown Prospect",
+                    email=ident.get("email"),
+                    linkedin_url=ident.get("linkedin_url"),
+                    company_url=ident.get("company_url"),
+                )
+                db.add(prospect)
+                db.flush()
+
+            pkt_rec = (
+                db.query(IntelligencePacketModel)
+                .filter_by(prospect_id=prospect_id)
+                .order_by(desc(IntelligencePacketModel.created_at))
+                .first()
+            )
+            packet_id = pkt_rec.packet_id if pkt_rec else None
+
+            override_id = new_id("ovr")
+            ovr_model = OperatorOverrideModel(
+                override_id=override_id,
+                prospect_id=prospect_id,
+                packet_id=packet_id,
+                override_pursue=pursue,
+                reason=reason,
+                operator_id=operator_id or "operator",
+            )
+            db.add(ovr_model)
+
+            db.add(
+                AuditLogModel(
+                    audit_id=new_id("audit"),
+                    entity_type="operator_override",
+                    entity_id=override_id,
+                    action="override_decision",
+                    payload_json=json.dumps({"prospect_id": prospect_id, "pursue": pursue, "reason": reason}),
+                )
+            )
+
+            db.commit()
+            return {
+                "override_id": override_id,
+                "prospect_id": prospect_id,
+                "packet_id": packet_id,
+                "pursue": pursue,
+                "reason": reason,
+                "operator_id": operator_id or "operator",
+                "created_at": ovr_model.created_at.isoformat() if ovr_model.created_at else None,
+            }
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def get_override(self, prospect_id: str) -> dict | None:
+        db = SessionLocal()
+        try:
+            ovr = (
+                db.query(OperatorOverrideModel)
+                .filter_by(prospect_id=prospect_id)
+                .order_by(desc(OperatorOverrideModel.created_at))
+                .first()
+            )
+            if not ovr:
+                return None
+            return {
+                "override_id": ovr.override_id,
+                "prospect_id": ovr.prospect_id,
+                "packet_id": ovr.packet_id,
+                "pursue": ovr.override_pursue,
+                "reason": ovr.reason,
+                "operator_id": ovr.operator_id,
+                "created_at": ovr.created_at.isoformat() if ovr.created_at else None,
+            }
         finally:
             db.close()
 

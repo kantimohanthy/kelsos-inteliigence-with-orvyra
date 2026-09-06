@@ -88,7 +88,7 @@ class TestSprint0Foundation(unittest.TestCase):
         self.assertTrue(packet["packet_id"].startswith("pkt_"))
         self.assertTrue(packet["trace_id"].startswith("trace_"))
         self.assertTrue(packet["prospect_id"].startswith("prospect_"))
-        self.assertIn(packet["status"], ["ready", "low_relevance", "generated"])
+        self.assertIn(packet["status"], ["ready", "partial", "needs_review", "low_relevance", "generated"])
         self.assertIsInstance(packet["sources"], list)
         self.assertGreater(len(packet["sources"]), 0)
 

@@ -23,6 +23,7 @@ from intelligence.enrichment import resolve_identity
 from intelligence.extraction import extract_atomic_claims
 from intelligence.person import infer_person_context
 from intelligence.opportunity import evaluate_opportunity
+from intelligence.critic import critique_opportunity
 from intelligence.strategy import build_strategy
 
 DEFAULT_PRODUCT_CONTEXT = ProductContext(
@@ -118,8 +119,9 @@ async def build_intelligence_pipeline(
     if product_name and not product_context:
         active_product.name = product_name
 
-    # 7. Opportunity Reasoning
-    opportunity = evaluate_opportunity(company, person, active_product, claims)
+    # 7. Opportunity Reasoning & Adversarial Critic Pass
+    raw_opportunity = evaluate_opportunity(company, person, active_product, claims)
+    opportunity = critique_opportunity(raw_opportunity, claims, prior_interactions or [])
 
     # 8. Conversation Strategy Formulation
     strategy = build_strategy(opportunity, claims, objective)
