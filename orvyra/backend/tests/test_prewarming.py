@@ -61,7 +61,7 @@ class TestAsyncPreWarming(unittest.TestCase):
         self.assertEqual(job_res.status_code, 200)
         job_data = job_res.json()
         self.assertEqual(job_data["job_id"], job_id)
-        self.assertIn(job_data["status"], ["pending", "enriching", "ready", "partial"])
+        self.assertIn(job_data["status"], ["pending", "enriching", "ready", "partial", "needs_review"])
 
     def test_03_poll_enrichment_job_until_ready(self) -> None:
         """Scenario 3: Poll job until completion and verify packet is fetchable in memory."""
@@ -114,7 +114,7 @@ class TestAsyncPreWarming(unittest.TestCase):
             status2 = res2.json()[0]["status"]
 
             self.assertEqual(pid1, pid2)
-            self.assertIn(status2, ["ready", "partial"])
+            self.assertIn(status2, ["ready", "partial", "needs_review"])
             # Pipeline must NOT be re-executed for duplicate fresh lead
             mock_pipeline.assert_not_called()
 

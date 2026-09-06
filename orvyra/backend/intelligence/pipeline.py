@@ -161,8 +161,12 @@ async def build_intelligence_pipeline(
         status = "needs_review"
         for conf in identity.get("conflicts", []):
             warnings.append(f"Identity conflict: {conf}")
+    elif not opportunity.pursue:
+        status = "needs_review"
+    elif any(d.status != "success" for d in documents) or not prospect.company_url:
+        status = "partial"
     else:
-        status = "ready" if opportunity.pursue else "partial"
+        status = "ready"
     now = datetime.datetime.now(datetime.timezone.utc)
     valid_until = now + datetime.timedelta(days=7)
 

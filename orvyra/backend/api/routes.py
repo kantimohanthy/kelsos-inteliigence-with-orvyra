@@ -51,7 +51,7 @@ async def _run_enrichment_job(job_id: str, req: PreCallRequest, prospect_id_over
         facts_count = len(packet.facts)
         has_industry = bool(packet.company_context and packet.company_context.industry)
         
-        job_status = "ready" if (packet.opportunity.confidence > 0 and (facts_count > 0 or has_industry)) else "partial"
+        job_status = packet.status
         jobs.update_status(job_id, job_status)
     except Exception as e:
         logger.error(f"Background enrichment job '{job_id}' failed: {e}\n{traceback.format_exc()}")
